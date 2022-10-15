@@ -6,7 +6,7 @@ Created on Fri Feb 26 20:57:04 2021
 @author: bstaverosky
 """
 
-### THIS IS A GITHUB TEST ###
+### THIS IS A TEST FOR UPLOADING CHANGES FROM MY LAPTOP
 import datetime
 import matplotlib.pyplot as plt
 import numpy as np
