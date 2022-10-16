@@ -33,6 +33,9 @@ from datetime import datetime
 
 ##### PARAMETERS #####
 
+# Delete current database?
+dbdel = False 
+
 algos = ["xg", "linreg"]
 
 numest = [2,3,5,10]
@@ -51,7 +54,6 @@ alg = "xg"
 #pw = 10
 #nest = 5
 #mdepth = 3
-
 
 for pw in predwindow:
     for nest in numest:
@@ -177,10 +179,10 @@ for pw in predwindow:
             })
 
             # Save to CSV
-            if path.exists('/home/brian/Documents/projects/shared_projects/Data' + "/" + "adhoc" + "_model_rolling_strat.csv") == True:
-                perf.to_csv('/home/brian/Documents/projects/shared_projects/Data' + "/" + "adhoc" + "_model_rolling_strat.csv", mode = 'a', header = False)
-            elif path.exists('/home/brian/Documents/projects/shared_projects/Data' + "/" + "adhoc" + "_model_rolling_strat.csv") == False:
-                perf.to_csv('/home/brian/Documents/projects/shared_projects/Data' + "/" + "adhoc" + "_model_rolling_strat.csv", header = True)
+            if path.exists('/home/brian/Documents/projects/shared_projects/Data' + "/" + "single_etf" + "_model_rolling_strat.csv") == True:
+                perf.to_csv('/home/brian/Documents/projects/shared_projects/Data' + "/" + "single_etf" + "_model_rolling_strat.csv", mode = 'a', header = False)
+            elif path.exists('/home/brian/Documents/projects/shared_projects/Data' + "/" + "single_etf" + "_model_rolling_strat.csv") == False:
+                perf.to_csv('/home/brian/Documents/projects/shared_projects/Data' + "/" + "single_etf" + "_model_rolling_strat.csv", header = True)
 
 
 
