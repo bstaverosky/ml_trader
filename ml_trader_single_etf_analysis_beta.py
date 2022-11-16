@@ -82,8 +82,8 @@ for pw in predwindow:
             # Get Weekly Return
             #test = asset.resample('W').ffill()
             asset['closelag'] = asset['Close'].shift(pw)
-            def percentage_change(col1,col2):
-                return ((col2 - col1) / col1) * 100
+            #def percentage_change(col1,col2):
+            #   return ((col2 - col1) / col1) * 100
             
             asset['weekret'] = percentage_change(asset['closelag'],asset['Close'])
             asset['weekret'] = asset['weekret'].shift(-(pw+1))

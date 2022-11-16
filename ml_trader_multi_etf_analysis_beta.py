@@ -29,6 +29,10 @@ import pyfolio as pf
 import yfinance as yf
 import talib as talib
 import time
+exec(open("/home/brian/Documents/projects/ml_trader/ml_trader_functions.py").read())
+
+# Create a parameter that allows the user to run though entire ETF list or just portion of ETF list that hasn't been run yet. 
+
 
 ##### PARAMETERS #####
 
@@ -55,15 +59,10 @@ lw = 252
 tickers = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_Database.csv", header=None)
 tickers = tickers.iloc[:,0].tolist()
 
-# Tickers already run
-#tkran = pd.read_csv("/home/bstaverosky/Documents/projects/python/data/ETF_universe_xgboost_rolling_strat.csv")
-#tkran = tkran.loc[:,"Ticker"].tolist()
-
-#tickers = list(set(tickers) - set(tkran))
-
-#exclude = ["FLTR","MTGP","FLFR","FLUD"]
-
-#tickers = list(set(tickers) - set(exclude))
+# Load tickers already run
+rticks = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_universe_results_ml_trader.csv")
+rticks = rticks.loc[:,"Ticker"].tolist()
+tickers = list(set(tickers) - set(rticks))
 
 for x in tickers:
     #time.sleep(60)
@@ -94,10 +93,10 @@ for x in tickers:
         })
         
         # Save to CSV
-        if path.exists('/home/brian/Documents/projects/shared_projects/Data' + "/" + "ETF_universe" + "_xgboost_rolling_strat.csv") == True:
-            perf.to_csv('/home/brian/Documents/projects/shared_projects/Data' + "/" + "ETF_universe" + "_xgboost_rolling_strat.csv", mode = 'a', header = False)
-        elif path.exists('/home/brian/Documents/projects/shared_projects/Data' + "/" + "ETF_universe" + "_xgboost_rolling_strat.csv") == False:
-            perf.to_csv('/home/brian/Documents/projects/shared_projects/Data' + "/" + "ETF_universe" + "_xgboost_rolling_strat.csv", header = True)
+        if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
+            perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", mode = 'a', header = False)
+        elif path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == False:
+            perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", header = True)
             
     elif len(asset.index) >= 252:
     
@@ -134,12 +133,38 @@ for x in tickers:
         df = asset[['sma_rat', 'vme_rat', 'vol_rat', 'p2h', 'pwret']]
         df = df[~df.isin([np.nan, np.inf, -np.inf]).any(1)]
         df = df.dropna()
+        print("still working")
         
         if len(df.index) < 252:
         
             print("ticker does not have enough history")    
-        
-        elif len(df.index) >= 252 :
+            
+            # Performance Data Frame
+            perf = pd.DataFrame({
+                'Date Run': datetime.today().strftime('%Y-%m-%d'),
+                'Ticker': x,
+                'Prediction Window': [0],
+                'Lookback Window': [0],
+                'Number of Estimators': [0],
+                'Max Depth': [0],
+                'Annual Return': [0],
+                'Cumulative Returns': [0],
+                'Sharpe Ratio': [0],
+                'Sortino Ratio': [0],
+                'Max Drawdown': [0],
+                'Mean Squared Error': [0],
+                'Baseline': [0],
+                'Accuracy': [0],
+                'Skill': [0]
+            })
+            
+            # Save to CSV
+            if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
+                perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", mode = 'a', header = False)
+            elif path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == False:
+                perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", header = True)
+            
+        elif len(df.index) >= (lw+pw+1) :
             #j = lw
             predf = pd.DataFrame(columns = ["pred"])
             
@@ -199,6 +224,8 @@ for x in tickers:
                 sframe = sframe.dropna()
                 #pf.create_simple_tear_sheet(returns = strat_series, benchmark_rets=bmk_series)
                 
+     
+                
                 
                 # Convert regression prediction to categories to binaries
 
@@ -236,10 +263,10 @@ for x in tickers:
                 })
 
                 # Save to CSV
-                if path.exists('/home/brian/Documents/projects/shared_projects/Data' + "/" + "multi_etf" + "_xgboost_rolling_strat.csv") == True:
-                    perf.to_csv('/home/brian/Documents/projects/shared_projects/Data' + "/" + "multi_etf" + "_xgboost_rolling_strat.csv", mode = 'a', header = False)
-                elif path.exists('/home/brian/Documents/projects/shared_projects/Data' + "/" + "multi_etf" + "_xgboost_rolling_strat.csv") == False:
-                    perf.to_csv('/home/brian/Documents/projects/shared_projects/Data' + "/" + "multi_etf" + "_xgboost_rolling_strat.csv", header = True)
+                if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
+                    perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", mode = 'a', header = False)
+                elif path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == False:
+                    perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", header = True)
             
         
     #pf.create_simple_tear_sheet(returns = strat_series, benchmark_rets=bmk_series)
