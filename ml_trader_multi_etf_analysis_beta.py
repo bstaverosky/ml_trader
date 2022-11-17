@@ -31,6 +31,61 @@ import talib as talib
 import time
 exec(open("/home/brian/Documents/projects/ml_trader/ml_trader_functions.py").read())
 
+def percentage_change(col1,col2):
+    return ((col2 - col1) / col1) * 100
+
+def make_perf_output(ticker,strat_series,lw,pw,nest,mdepth,sframe,min_length):
+    # Performance Data Frame
+    import pandas as pd
+    from datetime import datetime
+    import empyrical as ep
+    from sklearn.metrics import mean_squared_error as MSE
+    from sklearn.metrics import accuracy_score
+    if min_length == False:
+        perf = pd.DataFrame({
+            'Date Run': datetime.today().strftime('%Y-%m-%d'),
+            'Ticker': ticker,
+            'Prediction Window': [0],
+            'Lookback Window': [0],
+            'Number of Estimators': [0],
+            'Max Depth': [0],
+            'Strategy Annual Return': [0],
+            'Benchmark Annual Return': [0],
+            'Active Annualized Return': [0],
+            'Annual Return': [0],
+            'Cumulative Returns': [0],
+            'Sharpe Ratio': [0],
+            'Sortino Ratio': [0],
+            'Max Drawdown': [0],
+            'Mean Squared Error': [0],
+            'Baseline': [0],
+            'Accuracy': [0],
+            'Skill': [0]
+        })
+        return(perf)
+                
+    elif min_length == True:
+        perf = pd.DataFrame({
+            'Date Run': datetime.today().strftime('%Y-%m-%d'),
+            'Ticker': ticker,
+            'Prediction Window': [pw],
+            'Lookback Window': [lw],
+            'Number of Estimators': nest,
+            'Max Depth': mdepth,
+            'Strategy Annual Return': ep.cagr(strat_series),
+            'Benchmark Annual Return': ep.cagr(bmk_series),
+            'Active Annualized Return': ep.cagr(strat_series)-ep.cagr(bmk_series),
+            'Cumulative Returns': ep.cum_returns_final(strat_series)*100,
+            'Sharpe Ratio': ep.sharpe_ratio(strat_series),
+            'Sortino Ratio': ep.sortino_ratio(strat_series),
+            'Max Drawdown': ep.max_drawdown(strat_series),
+            'Mean Squared Error': MSE(sframe.loc[:,"pwret"], sframe.loc[:,"signal"])**(1/2),
+            'Baseline': (sframe.loc[:,"pwret_bin"] == 1).sum()/len(sframe),
+            'Accuracy': accuracy_score(sframe.loc[:,"pwret_bin"], sframe.loc[:,"signal_bin"]),
+            'Skill': accuracy_score(sframe.loc[:,"pwret_bin"], sframe.loc[:,"signal_bin"])-(sframe.loc[:,"pwret_bin"] == 1).sum()/len(sframe)
+            })
+        return (perf)
+
 # Create a parameter that allows the user to run though entire ETF list or just portion of ETF list that hasn't been run yet. 
 
 
@@ -60,38 +115,19 @@ tickers = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_Database.csv
 tickers = tickers.iloc[:,0].tolist()
 
 # Load tickers already run
-rticks = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_universe_results_ml_trader.csv")
-rticks = rticks.loc[:,"Ticker"].tolist()
-tickers = list(set(tickers) - set(rticks))
+
+if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
+    rticks = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_universe_results_ml_trader.csv")
+    rticks = rticks.loc[:,"Ticker"].tolist()
+    tickers = list(set(tickers) - set(rticks))
 
 for x in tickers:
-    #time.sleep(60)
-    #print(x)
+    print(x)
     asset = yf.download(x, start='1900-01-01', progress=True)
-    #asset = assets.iloc[:, assets.columns.get_level_values(1)==x]
-    #asset.columns = asset.columns.droplevel(1)
     
     if len(asset.index) < 252:    
+        perf = make_perf_output(ticker = x, strat_series=0, lw=lw, pw = pw, nest = nest, mdepth = mdepth, sframe = 0, min_length=False)
 
-        # Performance Data Frame
-        perf = pd.DataFrame({
-            'Date Run': datetime.today().strftime('%Y-%m-%d'),
-            'Ticker': x,
-            'Prediction Window': [0],
-            'Lookback Window': [0],
-            'Number of Estimators': [0],
-            'Max Depth': [0],
-            'Annual Return': [0],
-            'Cumulative Returns': [0],
-            'Sharpe Ratio': [0],
-            'Sortino Ratio': [0],
-            'Max Drawdown': [0],
-            'Mean Squared Error': [0],
-            'Baseline': [0],
-            'Accuracy': [0],
-            'Skill': [0]
-        })
-        
         # Save to CSV
         if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
             perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", mode = 'a', header = False)
@@ -121,11 +157,7 @@ for x in tickers:
         asset['dayret'] = asset['Close'].pct_change()
         
         # Get Prediction Window Return
-        #test = asset.resample('W').ffill()
         asset['closelag5'] = asset['Close'].shift(pw)
-        def percentage_change(col1,col2):
-            return ((col2 - col1) / col1) * 100
-        
         asset['pwret'] = percentage_change(asset['closelag5'],asset['Close'])
         asset['pwret'] = asset['pwret'].shift(-pw-1)
         
@@ -135,29 +167,12 @@ for x in tickers:
         df = df.dropna()
         print("still working")
         
-        if len(df.index) < 252:
+        if len(df.index) < (lw+pw+1):
         
             print("ticker does not have enough history")    
-            
             # Performance Data Frame
-            perf = pd.DataFrame({
-                'Date Run': datetime.today().strftime('%Y-%m-%d'),
-                'Ticker': x,
-                'Prediction Window': [0],
-                'Lookback Window': [0],
-                'Number of Estimators': [0],
-                'Max Depth': [0],
-                'Annual Return': [0],
-                'Cumulative Returns': [0],
-                'Sharpe Ratio': [0],
-                'Sortino Ratio': [0],
-                'Max Drawdown': [0],
-                'Mean Squared Error': [0],
-                'Baseline': [0],
-                'Accuracy': [0],
-                'Skill': [0]
-            })
-            
+            perf = make_perf_output(ticker = x, strat_series=0, lw=lw, pw = pw, nest = nest, mdepth = mdepth, sframe = 0, min_length=False)
+    
             # Save to CSV
             if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
                 perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", mode = 'a', header = False)
@@ -174,15 +189,6 @@ for x in tickers:
                                                max_depth=mdepth,
                                                random_state=2)
                 # Make trainsets
-                #xtrain = df.loc[df.index[i-(lw+pw)]:df.index[i-pw],['sma_rat', 'vol_rat', 'p2h', 'vme_rat']]
-                #ytrain = df.loc[df.index[i-(lw+pw)]:df.index[i-pw],['pwret']]
-                
-                # Make testsets
-                #xtest = df.loc[[df.index[i+1]],['sma_rat', 'vol_rat', 'p2h','vme_rat']]    
-                #ytest = df.loc[[df.index[i+1]],['pwret']]
-                #type(ytest)
-                
-                # Make trainsets
                 xtrain = df.loc[df.index[i-(lw+pw)]:df.index[i-pw],['sma_rat', 'vol_rat', 'p2h']]
                 ytrain = df.loc[df.index[i-(lw+pw)]:df.index[i-pw],['pwret']]
                     
@@ -192,10 +198,7 @@ for x in tickers:
                 
                 gb.fit(xtrain, ytrain)
                 y_pred = gb.predict(xtest)
-
-                
-                #results = pd.DataFrame(data = )
-                
+           
                 lframe = pd.DataFrame(y_pred, columns = ["pred"], index = ytest.index)
                 predf = predf.append(lframe)
                 
@@ -204,7 +207,6 @@ for x in tickers:
             sframe = df
             sframe['signal'] = predf
             sframe['signal'] = sframe['signal'].shift(1)
-            #sframe['signal'] = sframe['signal']
             sframe['return'] = asset['dayret']
             
             if len(sframe) < 5:
@@ -215,18 +217,14 @@ for x in tickers:
                 # Create the strategy return performance
                 for i in range(len(sframe.index)):
                     if sframe.loc[sframe.index[i], "signal"] > 0:
-                        sframe.loc[sframe.index[i], "strat"] = sframe.loc[sframe.index[i], "return"]*1.25
+                        sframe.loc[sframe.index[i], "strat"] = sframe.loc[sframe.index[i], "return"]*1
                     else:
-                        sframe.loc[sframe.index[i], "strat"] = sframe.loc[sframe.index[i], "return"]*0.75
+                        sframe.loc[sframe.index[i], "strat"] = sframe.loc[sframe.index[i], "return"]*0
                         
                 bmk_series = sframe.loc[:,"return"]
                 strat_series = sframe.loc[:,"strat"]
                 sframe = sframe.dropna()
                 #pf.create_simple_tear_sheet(returns = strat_series, benchmark_rets=bmk_series)
-                
-     
-                
-                
                 # Convert regression prediction to categories to binaries
 
                 for i in range(len(sframe.index)):
@@ -242,32 +240,17 @@ for x in tickers:
                         sframe.loc[sframe.index[i], "signal_bin"] = 0
                                 
                 
-                # Performance Data Frame
-                # Performance Data Frame
-                perf = pd.DataFrame({
-                    'Date Run': datetime.today().strftime('%Y-%m-%d'),
-                    'Ticker': x,
-                    'Prediction Window': [pw],
-                    'Lookback Window': [lw],
-                    'Number of Estimators': nest,
-                    'Max Depth': mdepth,
-                    'Annual Return': ep.cagr(strat_series),
-                    'Cumulative Returns': ep.cum_returns_final(strat_series)*100,
-                    'Sharpe Ratio': ep.sharpe_ratio(strat_series),
-                    'Sortino Ratio': ep.sortino_ratio(strat_series),
-                    'Max Drawdown': ep.max_drawdown(strat_series),
-                    'Mean Squared Error': MSE(sframe.loc[:,"pwret"], sframe.loc[:,"signal"])**(1/2),
-                    'Baseline': (sframe.loc[:,"pwret_bin"] == 1).sum()/len(sframe),
-                    'Accuracy': accuracy_score(sframe.loc[:,"pwret_bin"], sframe.loc[:,"signal_bin"]),
-                    'Skill': accuracy_score(sframe.loc[:,"pwret_bin"], sframe.loc[:,"signal_bin"])-(sframe.loc[:,"pwret_bin"] == 1).sum()/len(sframe)
-                })
-
+                # Performance Data Frame                
+                perf = make_perf_output(ticker=x, strat_series=strat_series, lw=lw, pw=pw, nest=nest, mdepth=mdepth, sframe=sframe, min_length=True)
                 # Save to CSV
                 if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
                     perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", mode = 'a', header = False)
                 elif path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == False:
                     perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", header = True)
+
             
+#def save_to_path(filepath, filename):
+    
         
     #pf.create_simple_tear_sheet(returns = strat_series, benchmark_rets=bmk_series)
     
