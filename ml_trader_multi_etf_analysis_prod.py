@@ -235,7 +235,7 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
 
 ##### PARAMETERS #####
 
-# Archive current database?
+# Delete current database?
 dbdel = False 
 
 # Current Algos
@@ -262,6 +262,7 @@ tickers = tickers.iloc[:,0].tolist()
 
 if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
     rticks = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_universe_results_ml_trader.csv", on_bad_lines='skip')
+    rticks = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_universe_results_ml_trader.csv", header = True)
     rticks = rticks.loc[:,"Ticker"].tolist()
     tickers = list(set(tickers) - set(rticks))
 
