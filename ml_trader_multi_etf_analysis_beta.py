@@ -9,6 +9,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from itertools import product
 #import pandas_datareader.data as web
 import seaborn as sns
 import sklearn
@@ -93,7 +94,7 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
         print(x)
         asset = yf.download(x, start='1900-01-01', progress=True)
         
-        if len(asset.index) < 2520:    
+        if len(asset.index) < 2560:    
             perf = make_perf_output(ticker = x, strat_series=0, bmk_series =0, lw=lw, pw = pw, nest = nest, mdepth = mdepth, sframe = 0, min_length=False, algo = algo)
     
             # Save to CSV
@@ -102,7 +103,7 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
             elif path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == False:
                 perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", header = True)
                 
-        elif len(asset.index) >= 2520:
+        elif len(asset.index) >= 2560:
         
             # Calculate signals
             # SMA RATIO
@@ -237,7 +238,10 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
                     elif path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == False:
                         perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", header = True)
 
-
+def check_conditions(subset):
+    if (all(val in subset['Model'].values for val in ["xg", "linreg"]) and all(val in subset['Prediction Window'].values for val in [5,10,21,42,63,126]) and all(val in subset['Lookback Window'].values for val in [252, 504, 756, 1260, 2520])):
+        return True
+    return False
 ##### PARAMETERS #####
 
 # Archive current database?
@@ -274,8 +278,8 @@ if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_
     for ticker in rticks:
         # Subset dataframe for specific ticker
         subset = rframe[rframe['Ticker']==ticker]
-        # check if "xg" and "linreg" exist in the subset
-        if all(val in subset['Model'].values for val in ["xg", "linreg"]):
+        # check to see if all models, prediction windows and lookback windows have been tested
+        if check_conditions(subset):
             # add ticker to verified tickers list
             verified_tickers.append(ticker)
             
@@ -283,8 +287,8 @@ if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_
 
 ### DO THE WORK ###
 
-for x in ["xg", "linreg"]:
-    do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo = x)
+for x, y, z in product(["xg", "linreg"], [5,10,21,42,63,126], [252, 504, 756, 1260, 2520]):
+    do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=y, lw=z, algo = x)   
             
 
 
