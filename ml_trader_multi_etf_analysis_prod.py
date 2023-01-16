@@ -35,7 +35,7 @@ exec(open("/home/brian/Documents/projects/ml_trader/ml_trader_functions.py").rea
 def percentage_change(col1,col2):
     return ((col2 - col1) / col1) * 100
 
-def make_perf_output(ticker,strat_series,lw,pw,nest,mdepth,sframe,min_length):
+def make_perf_output(ticker,strat_series,bmk_series,lw,pw,nest,mdepth,sframe,min_length,algo):
     # Performance Data Frame
     import pandas as pd
     from datetime import datetime
@@ -46,6 +46,7 @@ def make_perf_output(ticker,strat_series,lw,pw,nest,mdepth,sframe,min_length):
         perf = pd.DataFrame({
             'Date Run': datetime.today().strftime('%Y-%m-%d'),
             'Ticker': ticker,
+            'Model': algo,
             'Prediction Window': [0],
             'Lookback Window': [0],
             'Number of Estimators': [0],
@@ -68,6 +69,7 @@ def make_perf_output(ticker,strat_series,lw,pw,nest,mdepth,sframe,min_length):
         perf = pd.DataFrame({
             'Date Run': datetime.today().strftime('%Y-%m-%d'),
             'Ticker': ticker,
+            'Model': algo,
             'Prediction Window': [pw],
             'Lookback Window': [lw],
             'Number of Estimators': nest,
@@ -91,8 +93,8 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
         print(x)
         asset = yf.download(x, start='1900-01-01', progress=True)
         
-        if len(asset.index) < 252:    
-            perf = make_perf_output(ticker = x, strat_series=0, lw=lw, pw = pw, nest = nest, mdepth = mdepth, sframe = 0, min_length=False)
+        if len(asset.index) < 2520:    
+            perf = make_perf_output(ticker = x, strat_series=0, bmk_series =0, lw=lw, pw = pw, nest = nest, mdepth = mdepth, sframe = 0, min_length=False, algo = algo)
     
             # Save to CSV
             if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
@@ -100,7 +102,7 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
             elif path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == False:
                 perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", header = True)
                 
-        elif len(asset.index) >= 252:
+        elif len(asset.index) >= 2520:
         
             # Calculate signals
             # SMA RATIO
@@ -137,7 +139,7 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
             
                 print("ticker does not have enough history")    
                 # Performance Data Frame
-                perf = make_perf_output(ticker = x, strat_series=0, lw=lw, pw = pw, nest = nest, mdepth = mdepth, sframe = 0, min_length=False)
+                perf = make_perf_output(ticker = x, strat_series=0, bmk_series = 0, lw=lw, pw = pw, nest = nest, mdepth = mdepth, sframe = 0, min_length=False)
         
                 # Save to CSV
                 if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
@@ -182,9 +184,12 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
                         ytest = df.loc[[df.index[i+1]],['pwret']]
                         
                         model = sm.OLS(ytrain, xtrain).fit()
+                        y_pred = model.predict(xtest)
+                        
+                        lframe = pd.DataFrame(y_pred, columns = ["pred"], index = ytest.index)
+                        predf = predf.append(lframe)
                         
                         #model.summary()
-                    
                     
                 # Put predictions back on original data frame
                 # And convert y_pred so it can be added to dataframe
@@ -223,9 +228,9 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
                         else:
                             sframe.loc[sframe.index[i], "signal_bin"] = 0
                                     
-                    
+                    print(x)
                     # Performance Data Frame                
-                    perf = make_perf_output(ticker=x, strat_series=strat_series, lw=lw, pw=pw, nest=nest, mdepth=mdepth, sframe=sframe, min_length=True)
+                    perf = make_perf_output(ticker=x, strat_series=strat_series, bmk_series=bmk_series, lw=lw, pw=pw, nest=nest, mdepth=mdepth, sframe=sframe, min_length=True, algo = algo)
                     # Save to CSV
                     if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
                         perf.to_csv('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv", mode = 'a', header = False)
@@ -235,7 +240,7 @@ def do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo="xg"):
 
 ##### PARAMETERS #####
 
-# Delete current database?
+# Archive current database?
 dbdel = False 
 
 # Current Algos
@@ -261,14 +266,25 @@ tickers = tickers.iloc[:,0].tolist()
 # Load tickers already run
 
 if path.exists('/home/brian/Documents/projects/ml_trader' + "/" + "ETF_universe_results" + "_ml_trader.csv") == True:
-    rticks = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_universe_results_ml_trader.csv", on_bad_lines='skip')
-    rticks = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_universe_results_ml_trader.csv", header = True)
-    rticks = rticks.loc[:,"Ticker"].tolist()
-    tickers = list(set(tickers) - set(rticks))
+    rframe = pd.read_csv("/home/brian/Documents/projects/ml_trader/ETF_universe_results_ml_trader.csv", on_bad_lines='skip')
+    rticks = rframe.loc[:,"Ticker"].tolist()
+    
+    verified_tickers = []
+    # loop through tickers
+    for ticker in rticks:
+        # Subset dataframe for specific ticker
+        subset = rframe[rframe['Ticker']==ticker]
+        # check if "xg" and "linreg" exist in the subset
+        if all(val in subset['Model'].values for val in ["xg", "linreg"]):
+            # add ticker to verified tickers list
+            verified_tickers.append(ticker)
+            
+    tickers = list(set(tickers) - set(verified_tickers))
 
 ### DO THE WORK ###
 
-do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo = "xg")
+for x in ["xg", "linreg"]:
+    do_etfuniv_backtest(tickers, mdepth=3, nest=2, pw=63, lw=252, algo = x)
             
 
 
